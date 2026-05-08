@@ -1,0 +1,10 @@
+# Python dependencies for the FastAPI front layer (server/main.py)
+# Install with:  pip install -r server/requirements.txt
+
+fastapi>=0.110
+uvicorn[standard]>=0.27
+asyncpg>=0.29           # async PostgreSQL driver
+httpx>=0.27             # async HTTP client (replaces undici)
+python-dotenv>=1.0
+python-multipart>=0.0.9 # required for File/Form uploads
+pydantic>=2.5
