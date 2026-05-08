@@ -1,0 +1,334 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>BSA Chat — Analytics</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<script src="/chart.min.js"></script>
+<style>
+:root {
+    --red:#b71c1c; --green:#2e7d32; --orange:#e65100;
+    --bg:#f5f5f7; --card:#fff; --border:#e0e0e0; --muted:#888;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+html,body{height:100%;overflow:hidden;}
+body{font:13px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+     background:var(--bg);color:#222;display:flex;flex-direction:column;}
+
+/* header */
+.hdr{background:var(--red);color:#fff;height:48px;flex-shrink:0;
+     padding:0 20px;display:flex;align-items:center;justify-content:space-between;}
+.hdr h1{font-size:15px;font-weight:600;}
+.hdr nav{display:flex;gap:18px;}
+.hdr nav a{color:rgba(255,255,255,.75);text-decoration:none;font-size:13px;}
+.hdr nav a:hover,.hdr nav a.on{color:#fff;font-weight:600;}
+.hdr button{background:rgba(255,255,255,.15);color:#fff;border:0;
+    padding:4px 11px;border-radius:5px;cursor:pointer;font-size:12px;}
+
+/* login */
+#login-wrap{max-width:320px;margin:60px auto;background:var(--card);
+    border-radius:10px;padding:24px;box-shadow:0 2px 10px rgba(0,0,0,.1);}
+#login-wrap h2{font-size:16px;margin-bottom:14px;}
+#login-wrap input{width:100%;padding:9px 11px;border:1px solid var(--border);
+    border-radius:6px;font:inherit;margin-bottom:10px;}
+#login-wrap input:focus{outline:none;border-color:var(--red);}
+#login-wrap button{width:100%;padding:9px;background:var(--red);color:#fff;
+    border:0;border-radius:6px;cursor:pointer;font-weight:600;}
+#login-err{color:var(--red);font-size:12px;margin-bottom:8px;display:none;}
+
+/* scroll area */
+#dash{flex:1;overflow-y:auto;padding:14px 20px 20px;}
+
+/* toolbar */
+.toolbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;}
+.toolbar h2{font-size:14px;font-weight:600;color:#333;}
+.range{display:flex;gap:5px;}
+.range button{padding:4px 11px;border-radius:5px;font-size:12px;cursor:pointer;
+    border:1px solid var(--border);background:var(--card);color:#555;transition:all .15s;}
+.range button.on{background:var(--red);color:#fff;border-color:var(--red);}
+
+/* stat cards */
+.cards{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:12px;}
+@media(max-width:700px){.cards{grid-template-columns:repeat(2,1fr);}}
+.card{background:var(--card);border:1px solid var(--border);border-radius:9px;padding:13px 15px;}
+.card .lbl{font-size:10px;color:var(--muted);text-transform:uppercase;
+           letter-spacing:.5px;margin-bottom:4px;}
+.card .val{font-size:24px;font-weight:700;line-height:1;}
+.card .sub{font-size:11px;color:var(--muted);margin-top:3px;}
+.c-ans .val{color:var(--green);}
+.c-miss .val{color:var(--red);}
+.c-hoff .val{color:var(--orange);}
+
+/* charts */
+.charts{display:grid;grid-template-columns:2fr 1fr;gap:10px;margin-bottom:12px;}
+@media(max-width:700px){.charts{grid-template-columns:1fr;}}
+.cbox{background:var(--card);border:1px solid var(--border);border-radius:9px;padding:14px 16px;}
+.cbox h3{font-size:12px;font-weight:600;color:#444;margin-bottom:10px;}
+.chart-area{position:relative;height:170px;display:flex;align-items:center;justify-content:center;}
+.chart-area canvas{position:absolute;top:0;left:0;}
+.no-data{font-size:12px;color:var(--muted);font-style:italic;}
+
+/* table */
+.tbox{background:var(--card);border:1px solid var(--border);border-radius:9px;overflow:hidden;}
+.tbox-head{display:flex;justify-content:space-between;align-items:center;
+           padding:11px 15px;border-bottom:1px solid var(--border);}
+.tbox-head h3{font-size:12px;font-weight:600;}
+.tbox-head span{font-size:11px;color:var(--muted);}
+table{width:100%;border-collapse:collapse;}
+th{padding:8px 15px;font-size:10px;text-transform:uppercase;letter-spacing:.4px;
+   color:var(--muted);background:#fafafa;border-bottom:1px solid var(--border);text-align:left;}
+td{padding:9px 15px;font-size:12px;border-bottom:1px solid #f0f0f0;vertical-align:top;}
+tr:last-child td{border-bottom:0;}
+tr:hover td{background:#fafafa;}
+.ts{color:var(--muted);font-size:11px;white-space:nowrap;}
+.empty{padding:24px;text-align:center;color:var(--muted);font-style:italic;font-size:12px;}
+
+#status-msg{text-align:center;color:var(--muted);padding:16px;font-size:13px;}
+</style>
+</head>
+<body>
+
+<div class="hdr">
+  <h1>BSA Chat — Analytics</h1>
+  <nav>
+    <a href="/admin">Handoffs</a>
+    <a href="/admin/analytics" class="on">Analytics</a>
+    <a href="/admin/content">Content</a>
+    <a href="/admin/pipeline">Pipeline</a>
+  </nav>
+  <button id="btn-out" style="display:none" onclick="logout()">Sign out</button>
+</div>
+
+<!-- login -->
+<div id="login-wrap">
+  <h2>Admin Login</h2>
+  <div id="login-err"></div>
+  <input type="password" id="pw" placeholder="Password" autofocus>
+  <button onclick="doLogin()">Sign in</button>
+</div>
+
+<!-- dashboard -->
+<div id="dash" style="display:none">
+  <div class="toolbar">
+    <h2>Overview</h2>
+    <div class="range">
+      <button id="r7"  onclick="load(7)"  class="on">7 days</button>
+      <button id="r30" onclick="load(30)">30 days</button>
+      <button id="r90" onclick="load(90)">90 days</button>
+    </div>
+  </div>
+
+  <div id="status-msg"></div>
+
+  <div class="cards">
+    <div class="card">
+      <div class="lbl">Total Questions</div>
+      <div class="val" id="v-total">—</div>
+      <div class="sub" id="v-sess">— sessions</div>
+    </div>
+    <div class="card c-ans">
+      <div class="lbl">Answered</div>
+      <div class="val" id="v-ans">—</div>
+      <div class="sub" id="v-ans-r">—</div>
+    </div>
+    <div class="card c-miss">
+      <div class="lbl">Unanswered</div>
+      <div class="val" id="v-miss">—</div>
+      <div class="sub" id="v-miss-r">—</div>
+    </div>
+    <div class="card c-hoff">
+      <div class="lbl">Handoffs</div>
+      <div class="val" id="v-hoff">—</div>
+      <div class="sub" id="v-hoff-s">— open · — resolved</div>
+    </div>
+  </div>
+
+  <div style="padding:0 20px 12px;">
+    <div class="cbox">
+      <h3>Daily Conversations — Answered vs Unanswered</h3>
+      <div class="chart-area" id="bar-wrap">
+        <span class="no-data">No data yet</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="tbox">
+    <div class="tbox-head">
+      <h3>Unanswered Queries</h3>
+      <span>Questions the chatbot could not answer</span>
+    </div>
+    <div id="tbl"></div>
+  </div>
+</div>
+
+<script>
+const KEY = 'bsa_admin_token';
+let token = '';
+let barChart = null, pieChart = null;
+
+// init
+(function(){
+  const t = localStorage.getItem(KEY);
+  if(t){ token=t; showDash(); load(7); }
+})();
+
+document.getElementById('pw').addEventListener('keydown', e => {
+  if(e.key==='Enter') doLogin();
+});
+
+async function doLogin(){
+  const pw = document.getElementById('pw').value.trim();
+  const err = document.getElementById('login-err');
+  err.style.display='none';
+  if(!pw) return;
+  try{
+    const r = await fetch('/api/admin/login',{
+      method:'POST', headers:{'content-type':'application/json'},
+      body: JSON.stringify({password:pw})
+    });
+    if(!r.ok){ err.textContent='Wrong password.'; err.style.display='block'; return; }
+    token = (await r.json()).token;
+    localStorage.setItem(KEY, token);
+    showDash(); load(7);
+  }catch(e){
+    err.textContent='Server unreachable.'; err.style.display='block';
+  }
+}
+
+function logout(){
+  localStorage.removeItem(KEY); token='';
+  document.getElementById('dash').style.display='none';
+  document.getElementById('login-wrap').style.display='';
+  document.getElementById('btn-out').style.display='none';
+}
+
+function showDash(){
+  document.getElementById('login-wrap').style.display='none';
+  document.getElementById('dash').style.display='';
+  document.getElementById('btn-out').style.display='';
+}
+
+async function load(days){
+  ['7','30','90'].forEach(d=>{
+    document.getElementById('r'+d).classList.toggle('on', d==days);
+  });
+  setMsg('Loading…');
+  try{
+    const r = await fetch('/api/admin/analytics?days='+days,{
+      headers:{authorization:'Bearer '+token}, cache:'no-store'
+    });
+    if(r.status===401){ logout(); return; }
+    if(!r.ok) throw new Error('Server error '+r.status);
+    render(await r.json());
+    setMsg('');
+  }catch(e){ setMsg('Error: '+e.message); }
+}
+
+function setMsg(m){ document.getElementById('status-msg').textContent=m; }
+
+function set(id,v){ const e=document.getElementById(id); if(e) e.textContent=v; }
+
+function render(data){
+  const ov=data.overview||{}, hf=data.handoffs||{};
+  const total=+ov.total_questions||0, ans=+ov.answered||0;
+  const miss=+ov.unanswered||0, sess=+ov.total_sessions||0;
+  const hO=+hf.open_count||0, hR=+hf.resolved_count||0;
+  const hLC=+hf.low_confidence||0, hUR=+hf.user_requested||0;
+
+  set('v-total', total);
+  set('v-sess',  sess+' session'+(sess!==1?'s':''));
+  set('v-ans',   ans);
+  set('v-ans-r', total ? Math.round(ans/total*100)+'% answer rate' : '—');
+  set('v-miss',  miss);
+  set('v-miss-r',total ? Math.round(miss/total*100)+'% of questions' : '—');
+  set('v-hoff',  hO+hR);
+  set('v-hoff-s',hO+' open · '+hR+' resolved');
+
+  drawBar(data.daily||[]);
+  drawTable(data.unanswered||[]);
+}
+
+function drawBar(daily){
+  const wrap = document.getElementById('bar-wrap');
+  if(!daily.length){
+    wrap.innerHTML='<span class="no-data">No data for this period yet</span>';
+    return;
+  }
+  wrap.innerHTML='<canvas id="barC"></canvas>';
+  const labels = daily.map(d=>{
+    const dt=new Date(d.day);
+    return dt.toLocaleDateString('en-GB',{day:'numeric',month:'short'});
+  });
+  if(barChart){ barChart.destroy(); barChart=null; }
+  barChart = new Chart(document.getElementById('barC').getContext('2d'),{
+    type:'bar',
+    data:{
+      labels,
+      datasets:[
+        {label:'Answered', data:daily.map(d=>+d.answered||0),
+         backgroundColor:'#a5d6a7',borderColor:'#388e3c',borderWidth:1,borderRadius:3},
+        {label:'Unanswered', data:daily.map(d=>+d.unanswered||0),
+         backgroundColor:'#ef9a9a',borderColor:'#c62828',borderWidth:1,borderRadius:3},
+      ]
+    },
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      plugins:{legend:{position:'bottom',labels:{font:{size:11},boxWidth:10}}},
+      scales:{
+        x:{grid:{display:false},ticks:{font:{size:10}}},
+        y:{beginAtZero:true,ticks:{precision:0,font:{size:10}}},
+      }
+    }
+  });
+}
+
+function drawPie(lc, ur){
+  const wrap = document.getElementById('pie-wrap');
+  if(lc+ur===0){
+    wrap.innerHTML='<span class="no-data">No handoffs yet</span>';
+    return;
+  }
+  wrap.innerHTML='<canvas id="pieC"></canvas>';
+  if(pieChart){ pieChart.destroy(); pieChart=null; }
+  pieChart = new Chart(document.getElementById('pieC').getContext('2d'),{
+    type:'doughnut',
+    data:{
+      labels:['Auto (low confidence)','User requested'],
+      datasets:[{
+        data:[lc,ur],
+        backgroundColor:['#ef9a9a','#ffcc80'],
+        borderColor:['#c62828','#e65100'],
+        borderWidth:1
+      }]
+    },
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      plugins:{legend:{position:'bottom',labels:{font:{size:11},boxWidth:10}}}
+    }
+  });
+}
+
+function drawTable(rows){
+  const el=document.getElementById('tbl');
+  if(!rows.length){
+    el.innerHTML='<div class="empty">No unanswered queries yet.</div>';
+    return;
+  }
+  const body = rows.map(r=>{
+    const ts = new Date(+r.created_at).toLocaleString('en-GB',{
+      day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'
+    });
+    return '<tr><td>'+esc(r.question)+'</td><td class="ts">'+ts+'</td></tr>';
+  }).join('');
+  el.innerHTML='<table><thead><tr><th>Question</th><th>Time</th></tr></thead>'
+    +'<tbody>'+body+'</tbody></table>';
+}
+
+function esc(s){
+  return String(s==null?'':s)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+</script>
+</body>
+</html>

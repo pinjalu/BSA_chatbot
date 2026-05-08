@@ -1,0 +1,326 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>BSA — Content Management</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<style>
+:root{--red:#b71c1c;--bg:#f5f5f7;--card:#fff;--border:#e0e0e0;--muted:#888;}
+*{box-sizing:border-box;margin:0;padding:0;}
+html,body{height:100%;overflow:hidden;}
+body{font:13px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+     background:var(--bg);color:#222;display:flex;flex-direction:column;}
+
+.hdr{background:var(--red);color:#fff;height:48px;flex-shrink:0;
+     padding:0 20px;display:flex;align-items:center;justify-content:space-between;}
+.hdr h1{font-size:15px;font-weight:600;}
+.hdr nav{display:flex;gap:18px;}
+.hdr nav a{color:rgba(255,255,255,.75);text-decoration:none;font-size:13px;}
+.hdr nav a:hover,.hdr nav a.on{color:#fff;font-weight:600;}
+.hdr button{background:rgba(255,255,255,.15);color:#fff;border:0;
+    padding:4px 11px;border-radius:5px;cursor:pointer;font-size:12px;}
+
+/* login */
+#login-wrap{max-width:320px;margin:60px auto;background:var(--card);
+    border-radius:10px;padding:24px;box-shadow:0 2px 10px rgba(0,0,0,.1);}
+#login-wrap h2{font-size:16px;margin-bottom:14px;}
+#login-wrap input{width:100%;padding:9px 11px;border:1px solid var(--border);
+    border-radius:6px;font:inherit;margin-bottom:10px;}
+#login-wrap input:focus{outline:none;border-color:var(--red);}
+#login-wrap button{width:100%;padding:9px;background:var(--red);color:#fff;
+    border:0;border-radius:6px;cursor:pointer;font-weight:600;}
+#login-err{color:var(--red);font-size:12px;margin-bottom:8px;display:none;}
+
+/* main */
+#main{flex:1;overflow-y:auto;padding:16px 20px 24px;}
+
+.toolbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;}
+.toolbar h2{font-size:14px;font-weight:600;}
+.btn{padding:7px 14px;border-radius:6px;font-size:13px;cursor:pointer;
+     font-weight:500;border:0;transition:all .15s;}
+.btn-red{background:var(--red);color:#fff;}
+.btn-red:hover{background:#9a1515;}
+.btn-gray{background:#e0e0e0;color:#333;}
+.btn-gray:hover{background:#ccc;}
+.btn-sm{padding:4px 10px;font-size:12px;border-radius:5px;border:0;cursor:pointer;font-weight:500;}
+.btn-edit{background:#e3f2fd;color:#1565c0;}
+.btn-edit:hover{background:#bbdefb;}
+.btn-del{background:#fce4e4;color:#c62828;}
+.btn-del:hover{background:#ffcdd2;}
+
+/* add form */
+#add-form{background:var(--card);border:1px solid var(--border);border-radius:10px;
+          padding:16px 18px;margin-bottom:14px;display:none;}
+#add-form h3{font-size:13px;font-weight:600;margin-bottom:12px;color:#333;}
+.form-row{margin-bottom:10px;}
+.form-row label{display:block;font-size:11px;font-weight:600;color:var(--muted);
+                text-transform:uppercase;letter-spacing:.4px;margin-bottom:4px;}
+.form-row input,.form-row textarea{
+    width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:6px;
+    font:inherit;font-size:13px;resize:vertical;}
+.form-row input:focus,.form-row textarea:focus{outline:none;border-color:var(--red);}
+.form-row textarea{min-height:80px;}
+.form-btns{display:flex;gap:8px;margin-top:12px;}
+#add-msg{font-size:12px;margin-top:8px;display:none;}
+
+/* table */
+.tbox{background:var(--card);border:1px solid var(--border);border-radius:10px;overflow:hidden;}
+.tbox-head{padding:12px 16px;border-bottom:1px solid var(--border);
+           display:flex;justify-content:space-between;align-items:center;}
+.tbox-head h3{font-size:13px;font-weight:600;}
+.tbox-head span{font-size:11px;color:var(--muted);}
+#search-box{padding:6px 10px;border:1px solid var(--border);border-radius:6px;
+            font:inherit;font-size:13px;width:220px;}
+#search-box:focus{outline:none;border-color:var(--red);}
+
+.qa-item{border-bottom:1px solid #f0f0f0;padding:12px 16px;}
+.qa-item:last-child{border-bottom:0;}
+.qa-item:hover{background:#fafafa;}
+.qa-q{font-weight:600;font-size:13px;color:#222;margin-bottom:4px;display:flex;
+      justify-content:space-between;align-items:flex-start;gap:10px;}
+.qa-q-text{flex:1;}
+.qa-a{font-size:12px;color:#555;line-height:1.5;margin-bottom:6px;
+      white-space:pre-wrap;word-wrap:break-word;max-height:60px;overflow:hidden;}
+.qa-a.expanded{max-height:none;}
+.qa-meta{font-size:11px;color:var(--muted);}
+.qa-actions{display:flex;gap:6px;flex-shrink:0;}
+.expand-btn{background:none;border:0;color:var(--red);font-size:11px;cursor:pointer;
+            padding:0;margin-top:2px;}
+
+/* inline edit */
+.edit-form{background:#f9f9f9;border:1px solid var(--border);border-radius:8px;
+           padding:12px;margin-top:8px;display:none;}
+.edit-form textarea{width:100%;padding:7px 9px;border:1px solid var(--border);
+    border-radius:5px;font:inherit;font-size:13px;resize:vertical;min-height:60px;}
+.edit-form textarea:focus{outline:none;border-color:var(--red);}
+.edit-form label{display:block;font-size:11px;font-weight:600;color:var(--muted);
+                 text-transform:uppercase;letter-spacing:.4px;margin-bottom:3px;margin-top:8px;}
+.edit-form label:first-child{margin-top:0;}
+.edit-btns{display:flex;gap:6px;margin-top:10px;}
+
+.empty{padding:32px;text-align:center;color:var(--muted);font-style:italic;font-size:13px;}
+#status{text-align:center;padding:16px;color:var(--muted);}
+</style>
+</head>
+<body>
+
+<div class="hdr">
+  <h1>BSA Chat — Content</h1>
+  <nav>
+    <a href="/admin">Handoffs</a>
+    <a href="/admin/analytics">Analytics</a>
+    <a href="/admin/content" class="on">Content</a>
+    <a href="/admin/pipeline">Pipeline</a>
+  </nav>
+  <button id="btn-out" style="display:none" onclick="logout()">Sign out</button>
+</div>
+
+<div id="login-wrap">
+  <h2>Admin Login</h2>
+  <div id="login-err"></div>
+  <input type="password" id="pw" placeholder="Password" autofocus>
+  <button onclick="doLogin()">Sign in</button>
+</div>
+
+<div id="main" style="display:none">
+  <div class="toolbar">
+    <h2>Saved Q&amp;A Answers</h2>
+    <button class="btn btn-red" onclick="toggleAdd()">+ Add Answer</button>
+  </div>
+
+  <!-- add form -->
+  <div id="add-form">
+    <h3>Add New Q&amp;A</h3>
+    <div class="form-row">
+      <label>Question</label>
+      <input type="text" id="add-q" placeholder="What is the engine oil capacity of BSA Gold Star?">
+    </div>
+    <div class="form-row">
+      <label>Answer</label>
+      <textarea id="add-a" placeholder="The engine oil capacity is 2.3 litres for service fill..."></textarea>
+    </div>
+    <div class="form-btns">
+      <button class="btn btn-red" onclick="saveNew()">Save</button>
+      <button class="btn btn-gray" onclick="toggleAdd()">Cancel</button>
+    </div>
+    <div id="add-msg"></div>
+  </div>
+
+  <!-- list -->
+  <div class="tbox">
+    <div class="tbox-head">
+      <h3>All Saved Answers <span id="count"></span></h3>
+      <input type="text" id="search-box" placeholder="Search questions…" oninput="filterItems()">
+    </div>
+    <div id="list-body"><div id="status">Loading…</div></div>
+  </div>
+</div>
+
+<script>
+const KEY = 'bsa_admin_token';
+let token = '';
+let allItems = [];
+
+(function(){
+  const t = localStorage.getItem(KEY);
+  if(t){ token=t; showMain(); loadItems(); }
+})();
+
+document.getElementById('pw').addEventListener('keydown', e=>{
+  if(e.key==='Enter') doLogin();
+});
+
+async function doLogin(){
+  const pw = document.getElementById('pw').value.trim();
+  const err = document.getElementById('login-err');
+  err.style.display='none';
+  if(!pw) return;
+  try{
+    const r = await fetch('/api/admin/login',{
+      method:'POST', headers:{'content-type':'application/json'},
+      body: JSON.stringify({password:pw})
+    });
+    if(!r.ok){ err.textContent='Wrong password.'; err.style.display='block'; return; }
+    token=(await r.json()).token;
+    localStorage.setItem(KEY, token);
+    showMain(); loadItems();
+  }catch(e){ err.textContent='Server unreachable.'; err.style.display='block'; }
+}
+
+function logout(){
+  localStorage.removeItem(KEY); token='';
+  document.getElementById('main').style.display='none';
+  document.getElementById('login-wrap').style.display='';
+  document.getElementById('btn-out').style.display='none';
+}
+
+function showMain(){
+  document.getElementById('login-wrap').style.display='none';
+  document.getElementById('main').style.display='';
+  document.getElementById('btn-out').style.display='';
+}
+
+async function api(path, opts={}){
+  opts.headers = Object.assign({}, opts.headers,
+    {authorization:'Bearer '+token,'content-type':'application/json'});
+  const r = await fetch(path, opts);
+  if(r.status===401){ logout(); throw new Error('unauthorized'); }
+  return r;
+}
+
+async function loadItems(){
+  document.getElementById('status').textContent='Loading…';
+  try{
+    const r = await api('/api/admin/content');
+    allItems = (await r.json()).items || [];
+    renderItems(allItems);
+  }catch(e){ document.getElementById('status').textContent='Error: '+e.message; }
+}
+
+function filterItems(){
+  const q = document.getElementById('search-box').value.toLowerCase();
+  if(!q){ renderItems(allItems); return; }
+  renderItems(allItems.filter(i=>
+    i.question.toLowerCase().includes(q) || i.answer.toLowerCase().includes(q)
+  ));
+}
+
+function renderItems(items){
+  const body = document.getElementById('list-body');
+  document.getElementById('count').textContent = '('+items.length+')';
+  if(!items.length){
+    body.innerHTML='<div class="empty">No saved answers yet. Add one above.</div>';
+    return;
+  }
+  body.innerHTML = items.map(item => {
+    const ts = new Date(item.created_at).toLocaleDateString('en-GB',
+      {day:'numeric',month:'short',year:'numeric'});
+    const shortAns = item.answer.length > 120
+      ? item.answer.slice(0,120)+'…' : item.answer;
+    return `<div class="qa-item" id="item-${esc(item.id)}">
+      <div class="qa-q">
+        <span class="qa-q-text">${esc(item.question)}</span>
+        <div class="qa-actions">
+          <button class="btn-sm btn-edit" onclick="startEdit('${esc(item.id)}')">Edit</button>
+          <button class="btn-sm btn-del"  onclick="deleteItem('${esc(item.id)}','${esc(item.question).slice(0,40)}')">Delete</button>
+        </div>
+      </div>
+      <div class="qa-a" id="ans-${esc(item.id)}">${esc(item.answer)}</div>
+      <div class="qa-meta">Added ${ts}${item.dealer_id ? ' · '+esc(item.dealer_id) : ''}</div>
+      <div class="edit-form" id="ef-${esc(item.id)}">
+        <label>Question</label>
+        <textarea id="eq-${esc(item.id)}" rows="2">${esc(item.question)}</textarea>
+        <label>Answer</label>
+        <textarea id="ea-${esc(item.id)}" rows="4">${esc(item.answer)}</textarea>
+        <div class="edit-btns">
+          <button class="btn btn-red btn-sm" onclick="saveEdit('${esc(item.id)}')">Save</button>
+          <button class="btn btn-gray btn-sm" onclick="cancelEdit('${esc(item.id)}')">Cancel</button>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function toggleAdd(){
+  const f = document.getElementById('add-form');
+  f.style.display = f.style.display==='none'||!f.style.display ? '' : 'none';
+  if(f.style.display!=='none') document.getElementById('add-q').focus();
+}
+
+async function saveNew(){
+  const q = document.getElementById('add-q').value.trim();
+  const a = document.getElementById('add-a').value.trim();
+  const msg = document.getElementById('add-msg');
+  if(!q||!a){ msg.textContent='Both fields required.'; msg.style.color='#c62828'; msg.style.display='block'; return; }
+  msg.textContent='Saving…'; msg.style.color='#888'; msg.style.display='block';
+  try{
+    const r = await api('/api/admin/content',{
+      method:'POST', body:JSON.stringify({question:q,answer:a})
+    });
+    if(!r.ok) throw new Error('Failed');
+    document.getElementById('add-q').value='';
+    document.getElementById('add-a').value='';
+    msg.textContent='Saved!'; msg.style.color='#2e7d32';
+    setTimeout(()=>{ document.getElementById('add-form').style.display='none'; msg.style.display='none'; },1000);
+    loadItems();
+  }catch(e){ msg.textContent='Error: '+e.message; msg.style.color='#c62828'; }
+}
+
+function startEdit(id){
+  document.getElementById('ef-'+id).style.display='block';
+  document.getElementById('eq-'+id).focus();
+}
+
+function cancelEdit(id){
+  document.getElementById('ef-'+id).style.display='none';
+}
+
+async function saveEdit(id){
+  const q = document.getElementById('eq-'+id).value.trim();
+  const a = document.getElementById('ea-'+id).value.trim();
+  if(!q||!a) return;
+  try{
+    const r = await api('/api/admin/content/'+encodeURIComponent(id),{
+      method:'PUT', body:JSON.stringify({question:q,answer:a})
+    });
+    if(!r.ok) throw new Error('Failed');
+    loadItems();
+  }catch(e){ alert('Error: '+e.message); }
+}
+
+async function deleteItem(id, preview){
+  if(!confirm('Delete this answer?\n"'+preview+'"')) return;
+  try{
+    await api('/api/admin/content/'+encodeURIComponent(id),{method:'DELETE'});
+    loadItems();
+  }catch(e){ alert('Error: '+e.message); }
+}
+
+function esc(s){
+  return String(s==null?'':s)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+</script>
+</body>
+</html>

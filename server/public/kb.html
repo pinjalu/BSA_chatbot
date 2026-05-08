@@ -1,0 +1,439 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>BSA Knowledge Base</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<style>
+:root{--red:#b71c1c;--bg:#f5f5f7;--card:#fff;--border:#e0e0e0;--muted:#888;}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font:14px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+     background:var(--bg);color:#222;min-height:100vh;}
+
+/* hero */
+.hero{background:linear-gradient(135deg,#b71c1c 0%,#7f1313 100%);
+      color:#fff;padding:36px 20px 32px;text-align:center;}
+.hero h1{font-size:24px;font-weight:700;margin-bottom:4px;}
+.hero p{font-size:13px;opacity:.8;margin-bottom:22px;}
+.search-wrap{max-width:620px;margin:0 auto;}
+.search-row{display:flex;gap:8px;}
+select.vsel{padding:10px 12px;border:0;border-radius:8px;font:inherit;
+    font-size:13px;background:#fff;color:#333;cursor:pointer;flex-shrink:0;}
+.sinput{flex:1;padding:10px 14px;border:0;border-radius:8px;font:inherit;font-size:14px;}
+.sinput:focus{outline:none;box-shadow:0 0 0 2px rgba(255,255,255,.4);}
+.sbtn{padding:10px 18px;background:#fff;color:var(--red);border:0;border-radius:8px;
+      font-weight:700;cursor:pointer;font-size:13px;flex-shrink:0;transition:all .15s;}
+.sbtn:hover{background:#fff3e0;}
+.sbtn:disabled{opacity:.6;cursor:not-allowed;}
+
+/* content area */
+.page{max-width:760px;margin:0 auto;padding:24px 16px 48px;}
+
+/* answer card */
+.answer-card{background:var(--card);border:1px solid var(--border);
+             border-radius:12px;overflow:hidden;margin-bottom:16px;}
+.answer-head{padding:14px 18px;border-bottom:1px solid var(--border);
+             background:#fafafa;display:flex;align-items:center;gap:10px;}
+.answer-head .icon{width:28px;height:28px;background:var(--red);border-radius:50%;
+    display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.answer-head .icon svg{width:14px;height:14px;fill:#fff;}
+.answer-head h3{font-size:13px;font-weight:600;color:#333;flex:1;}
+.answer-body{padding:16px 18px;}
+
+/* answer text rendering */
+.ans-text{font-size:14px;line-height:1.7;color:#222;}
+.ans-text p{margin-bottom:10px;}
+.ans-text p:last-child{margin-bottom:0;}
+.ans-text strong{font-weight:600;}
+.ans-text em{font-style:italic;}
+.ans-text ul,.ans-text ol{padding-left:20px;margin-bottom:10px;}
+.ans-text li{margin-bottom:5px;}
+.ans-text ul li{list-style:disc;}
+.ans-text ol li{list-style:decimal;}
+.ans-text code{background:#f0f1f4;border-radius:4px;padding:1px 5px;font-size:13px;}
+.blink::after{content:'▊';color:var(--red);animation:blink 1s steps(1) infinite;}
+@keyframes blink{0%,49%{opacity:1}50%,100%{opacity:0}}
+
+/* image */
+.ans-figure{display:block;margin:10px 0;border-radius:8px;overflow:hidden;
+            border:1px solid var(--border);line-height:0;max-width:480px;}
+.ans-figure img{width:100%;height:auto;max-height:320px;object-fit:contain;
+                display:block;background:#fff;}
+
+/* citations */
+.cites{padding:10px 18px 14px;border-top:1px solid #f0f0f0;}
+.cite-toggle{background:none;border:0;color:var(--muted);font-size:12px;
+             cursor:pointer;padding:0;display:flex;align-items:center;gap:4px;}
+.cite-toggle:hover{color:var(--red);}
+.arrow{transition:transform .18s;display:inline-block;}
+.cites.open .arrow{transform:rotate(90deg);}
+.cite-list{display:none;flex-wrap:wrap;gap:5px;margin-top:6px;}
+.cites.open .cite-list{display:flex;}
+.cpill{background:#f0f1f4;border:1px solid #e0e1e5;border-radius:10px;
+       padding:3px 9px;font-size:11px;color:#4a4d53;}
+
+/* timing */
+.timing{padding:4px 18px 10px;font-size:11px;color:#bbb;cursor:help;}
+
+/* states */
+.status{text-align:center;padding:28px;color:var(--muted);font-size:14px;}
+.hint{text-align:center;padding:40px 20px;color:var(--muted);}
+.hint h3{font-size:18px;color:#bbb;margin-bottom:8px;}
+.hint p{font-size:13px;}
+
+/* status / typing */
+.status-wrap{display:flex;flex-direction:column;gap:10px;padding:4px 0;}
+.status-row{display:flex;align-items:center;gap:10px;}
+.dots{display:flex;gap:4px;align-items:center;flex-shrink:0;}
+.dots span{width:7px;height:7px;background:#b71c1c;border-radius:50%;
+           animation:pulse 1.2s ease-in-out infinite;opacity:.4;}
+.dots span:nth-child(2){animation-delay:.2s;}
+.dots span:nth-child(3){animation-delay:.4s;}
+@keyframes pulse{0%,60%,100%{opacity:.25;transform:translateY(0)}
+                 30%{opacity:1;transform:translateY(-3px)}}
+.step-txt{font-size:13px;color:#666;font-style:italic;}
+.steps-done{display:flex;flex-direction:column;gap:4px;}
+.step-done{font-size:12px;color:#aaa;display:flex;align-items:center;gap:6px;}
+.step-done::before{content:'✓';color:#4caf50;font-style:normal;}
+
+/* chat cta */
+.cta{background:var(--card);border:1px solid var(--border);border-radius:10px;
+     padding:14px 18px;text-align:center;margin-top:8px;}
+.cta p{font-size:13px;color:#666;margin-bottom:10px;}
+.cta button{background:var(--red);color:#fff;border:0;padding:8px 18px;
+            border-radius:7px;cursor:pointer;font-weight:600;font-size:13px;}
+.cta button:hover{background:#9a1515;}
+
+/* inline handoff form */
+.hoff-form{padding:14px 18px 16px;border-top:1px solid #f0f0f0;}
+.hoff-q{font-size:12px;color:#888;font-style:italic;margin-bottom:12px;
+         padding:8px 10px;background:#fafafa;border-radius:6px;border-left:3px solid var(--red);}
+.hoff-form input{width:100%;padding:9px 11px;border:1px solid var(--border);
+    border-radius:7px;font:inherit;font-size:13px;margin-bottom:8px;}
+.hoff-form input:focus{outline:none;border-color:var(--red);}
+.hoff-btn{width:100%;padding:10px;background:var(--red);color:#fff;border:0;
+    border-radius:7px;cursor:pointer;font-weight:600;font-size:13px;}
+.hoff-btn:hover{background:#9a1515;}
+.hoff-btn:disabled{opacity:.6;cursor:not-allowed;}
+.hoff-success{padding:16px 18px;border-top:1px solid #f0f0f0;text-align:center;}
+.hoff-success .tick{font-size:28px;margin-bottom:8px;}
+.hoff-success h4{font-size:14px;font-weight:600;color:#2e7d32;margin-bottom:4px;}
+.hoff-success p{font-size:12px;color:#666;}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <h1>BSA Knowledge Base</h1>
+  <p>Search technical questions across all BSA manuals and saved answers</p>
+  <div class="search-wrap">
+    <div class="search-row">
+      <select class="vsel" id="vehicle">
+        <option value="">All models</option>
+        <option value="BSA Gold Star">Gold Star</option>
+        <option value="BSA Bantam">Bantam</option>
+        <option value="BSA Scrambler">Scrambler</option>
+      </select>
+      <input class="sinput" id="q" type="text"
+        placeholder="e.g. engine oil capacity, tyre pressure, valve clearance…"
+        onkeydown="if(event.key==='Enter')doSearch()">
+      <button class="sbtn" id="sbtn" onclick="doSearch()">Search</button>
+    </div>
+  </div>
+</div>
+
+<div class="page">
+  <div id="out">
+    <div class="hint">
+      <h3>What do you want to know?</h3>
+      <p>Type any technical question above — same answers as the live chat.</p>
+    </div>
+  </div>
+  <div class="cta">
+    <p>Need more help or want a real-time conversation?</p>
+    <button onclick="window.location='/test.html'">Open Live Chat</button>
+  </div>
+</div>
+
+<script>
+let streaming = false;
+
+async function doSearch(){
+  const q = document.getElementById('q').value.trim();
+  if(!q || streaming) return;
+  const vehicle = document.getElementById('vehicle').value;
+
+  streaming = true;
+  document.getElementById('sbtn').disabled = true;
+
+  // Build answer card with typing indicator
+  const out = document.getElementById('out');
+  out.innerHTML = `
+    <div class="answer-card" id="acard">
+      <div class="answer-head">
+        <div class="icon"><svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.04 2 11c0 2.5 1.13 4.76 2.96 6.36L4 22l4.84-1.27C10.06 21.55 11.01 21.7 12 21.7c5.52 0 10-4.04 10-10S17.52 2 12 2z"/></svg></div>
+        <h3>${esc(q)}</h3>
+      </div>
+      <div class="answer-body">
+        <div class="ans-text" id="ans"><div class="dots"><span></span><span></span><span></span></div></div>
+      </div>
+    </div>`;
+
+  const ansEl = document.getElementById('ans');
+  let acc = '';
+  let images = {};
+  let citations = [];
+  let firstToken = true;
+
+  // Client-side progress steps — shown by timer, cleared on first token
+  const STEPS = [
+    'Looking at your question…',
+    'Searching the manuals…',
+    'Reading relevant pages…',
+    'Picking the most relevant…',
+    'Writing answer…',
+  ];
+  let stepIdx = 0;
+  let doneSteps = [];
+  let stepTimer = null;
+
+  function showStep(idx){
+    if(idx >= STEPS.length) return;
+    if(idx > 0) doneSteps.push(STEPS[idx-1]);
+    const doneHtml = doneSteps.map(s=>
+      `<div class="step-done">${esc(s)}</div>`).join('');
+    ansEl.innerHTML=`<div class="status-wrap">
+      ${doneHtml ? `<div class="steps-done">${doneHtml}</div>` : ''}
+      <div class="status-row">
+        <div class="dots"><span></span><span></span><span></span></div>
+        <div class="step-txt">${esc(STEPS[idx])}</div>
+      </div>
+    </div>`;
+  }
+
+  const stepDelays = [0, 1800, 5000, 8000, 11000];
+  const allTimers = [];
+  stepDelays.forEach((delay, idx) => {
+    allTimers.push(setTimeout(() => showStep(idx), delay));
+  });
+
+  try{
+    const resp = await fetch('/api/kb/search',{
+      method:'POST',
+      headers:{'content-type':'application/json'},
+      body: JSON.stringify({query:q, vehicle:vehicle||null})
+    });
+    if(!resp.ok || !resp.body) throw new Error('Server error '+resp.status);
+
+    const reader = resp.body.getReader();
+    const dec = new TextDecoder();
+    let buf = '';
+
+    while(true){
+      const {value, done} = await reader.read();
+      if(done) break;
+      buf += dec.decode(value, {stream:true});
+      let m;
+      while((m=/\r?\n\r?\n/.exec(buf))!==null){
+        const raw = buf.slice(0, m.index);
+        buf = buf.slice(m.index + m[0].length);
+        const ev = parseSse(raw);
+        if(!ev) continue;
+
+        if(ev.event==='token'){
+          acc += ev.data.text||'';
+          if(firstToken){
+            allTimers.forEach(t => clearTimeout(t));
+            ansEl.innerHTML='';
+            ansEl.classList.add('blink');
+            firstToken=false;
+          }
+          ansEl.innerHTML = renderMd(acc, images);
+        } else if(ev.event==='meta'){
+          citations = ev.data.citations||[];
+          images = ev.data.images||{};
+          if(acc) ansEl.innerHTML = renderMd(acc, images);
+        } else if(ev.event==='done'){
+          ansEl.classList.remove('blink');
+          if(acc) ansEl.innerHTML = renderMd(acc, images);
+          if(citations.length) addCitations(citations);
+          if(ev.data && ev.data.timings) addTimings(ev.data.timings);
+          if(isNoAnswer(acc)) addHandoffBtn(q);
+        } else if(ev.event==='error'){
+          ansEl.innerHTML='<span style="color:#c62828">Error: '+esc((ev.data&&ev.data.message)||'unknown')+'</span>';
+        }
+      }
+    }
+  }catch(e){
+    allTimers.forEach(t => clearTimeout(t));
+    if(ansEl) ansEl.innerHTML='<span style="color:#c62828">'+esc(e.message)+'</span>';
+  }finally{
+    streaming=false;
+    document.getElementById('sbtn').disabled=false;
+  }
+}
+
+const NO_ANS_RX = /couldn'?t find|could not find|don'?t have|not (in|covered in) (the )?(manuals?|docs?)|no (relevant )?information|i'?m not finding|i can'?t find|outside (the )?scope|talk to a human/i;
+
+function isNoAnswer(text){
+  return NO_ANS_RX.test(text||'');
+}
+
+function addHandoffBtn(question){
+  const card = document.getElementById('acard');
+  if(!card || card.querySelector('.hoff-form')) return;
+
+  const formId = 'hoff-'+Date.now();
+  const wrap = document.createElement('div');
+  wrap.className = 'hoff-form';
+  wrap.id = formId;
+  const qShort = question ? question.slice(0,120)+(question.length>120?'…':'') : '';
+  wrap.innerHTML = `
+    ${qShort ? `<div class="hoff-q">"${esc(qShort)}"</div>` : ''}
+    <input type="text"  id="hoff-name"  placeholder="Your name (optional)">
+    <input type="email" id="hoff-email" placeholder="Your email *" required>
+    <div id="hoff-err" style="color:#c62828;font-size:12px;margin-bottom:8px;display:none;"></div>
+    <button class="hoff-btn" id="hoff-submit" onclick="submitHandoff('${esc(question||'')}','${formId}')">
+      💬 Connect with our team
+    </button>
+    <div style="font-size:11px;color:#aaa;text-align:center;margin-top:6px;">
+      Our team will follow up on your email
+    </div>`;
+  card.appendChild(wrap);
+}
+
+async function submitHandoff(question, formId){
+  const name  = (document.getElementById('hoff-name')  || {}).value || '';
+  const email = (document.getElementById('hoff-email') || {}).value || '';
+  const errEl = document.getElementById('hoff-err');
+  const btn   = document.getElementById('hoff-submit');
+
+  if(!email.trim()){
+    errEl.textContent='Email is required.'; errEl.style.display='block'; return;
+  }
+  errEl.style.display='none';
+  btn.disabled=true; btn.textContent='Sending…';
+
+  try{
+    const r = await fetch('/api/kb/handoff',{
+      method:'POST',
+      headers:{'content-type':'application/json'},
+      body: JSON.stringify({name:name.trim(), email:email.trim(), question})
+    });
+    if(!r.ok) throw new Error('Server error');
+
+    // Replace form with success message
+    const wrap = document.getElementById(formId);
+    if(wrap) wrap.outerHTML = `
+      <div class="hoff-success">
+        <div class="tick">✅</div>
+        <h4>Request sent!</h4>
+        <p>Our team will get back to you at <strong>${esc(email)}</strong>.<br>
+           They can also see your question in the support queue.</p>
+      </div>`;
+  }catch(e){
+    btn.disabled=false; btn.textContent='💬 Connect with our team';
+    errEl.textContent='Failed to send. Please try again.'; errEl.style.display='block';
+  }
+}
+
+function addCitations(cits){
+  const card = document.getElementById('acard');
+  if(!card) return;
+  const seen = new Set();
+  const pills = [];
+  for(const c of cits){
+    if(!c||c.score<0.25) continue;
+    const key = (c.source_pdf||'')+'|'+(c.page||'');
+    if(seen.has(key)) continue;
+    seen.add(key);
+    const doc = (c.source_pdf||'').replace(/\.pdf$/i,'').replace(/_REV-\d+/i,'')
+      .replace(/_\d{2}\.\d{2}\.\d{4}.*$/,'').replace(/_+/g,' ').trim().slice(0,36);
+    const pg = c.page!=null ? ' · p.'+Math.trunc(Number(c.page)) : '';
+    pills.push(esc(doc+pg));
+  }
+  if(!pills.length) return;
+  const div = document.createElement('div');
+  div.className='cites';
+  div.innerHTML=`<button class="cite-toggle" onclick="this.closest('.cites').classList.toggle('open')">
+    <span class="arrow">▸</span> ${pills.length} source${pills.length>1?'s':''}
+  </button>
+  <div class="cite-list">${pills.map(p=>`<span class="cpill">${p}</span>`).join('')}</div>`;
+  card.appendChild(div);
+}
+
+function addTimings(t){
+  const card = document.getElementById('acard');
+  if(!card||!t||!t.total) return;
+  const div = document.createElement('div');
+  div.className='timing';
+  div.title=`embed ${t.embed}ms · pinecone ${t.pinecone}ms · LLM ${t.llm_total}ms`;
+  div.textContent=`answered in ${(t.total/1000).toFixed(1)}s`;
+  card.appendChild(div);
+}
+
+function renderMd(raw, imgs){
+  if(!raw) return '';
+  const imageMap = imgs||{};
+  const placeholders=[];
+  let s = String(raw).replace(
+    /\[\[SHOW_IMAGE:\s*([A-Za-z0-9_-]+)\s*\]\]/g,
+    (_,id)=>{
+      const url=imageMap[id]; if(!url) return '';
+      if(placeholders.includes(url)) return '';
+      placeholders.push(url);
+      return ' IMG'+(placeholders.length-1)+' ';
+    }
+  );
+  s=esc(s);
+  s=s.replace(/`([^`\n]+)`/g,'<code>$1</code>');
+  s=s.replace(/\*\*([^*\n][^*]*?)\*\*/g,'<strong>$1</strong>');
+  s=s.replace(/(^|[^*])\*([^*\n]+?)\*(?!\*)/g,'$1<em>$2</em>');
+  const lines=s.split(/\r?\n/);
+  const out=[];
+  let lt=null,para=[];
+  const fp=()=>{if(para.length){out.push('<p>'+para.join('<br>')+'</p>');para=[];}};
+  const cl=()=>{if(lt){out.push('</'+lt+'>');lt=null;}};
+  for(const ln of lines){
+    const tr=ln.trim();
+    if(!tr){fp();cl();continue;}
+    const ul=/^[-*•]\s+(.*)$/.exec(tr);
+    const ol=/^(\d+)[.)]\s+(.*)$/.exec(tr);
+    if(ul){fp();if(lt!=='ul'){cl();out.push('<ul>');lt='ul';}out.push('<li>'+ul[1]+'</li>');}
+    else if(ol){fp();if(lt!=='ol'){cl();out.push('<ol>');lt='ol';}out.push('<li>'+ol[2]+'</li>');}
+    else{cl();para.push(tr);}
+  }
+  fp();cl();
+  let html=out.join('').replace(/<p>(Sources:[^<]*)<\/p>/i,'<p style="color:#888;font-size:12px;font-style:italic">$1</p>');
+  html=html.replace(/<p>\s*IMG(\d+)\s*<\/p>/g,(_,n)=>imgBlock(placeholders[+n]));
+  html=html.replace(/\s?IMG(\d+)\s?/g,(_,n)=>'</p>'+imgBlock(placeholders[+n])+'<p>');
+  html=html.replace(/<p>\s*<\/p>/g,'');
+  return html;
+}
+
+function imgBlock(url){
+  if(!url) return '';
+  const s=String(url).replace(/"/g,'&quot;');
+  return `<a class="ans-figure" href="${s}" target="_blank" rel="noopener">
+    <img src="${s}" alt="figure" loading="lazy"></a>`;
+}
+
+function parseSse(raw){
+  let event='message', data=[];
+  for(const line of raw.split('\n')){
+    if(line.startsWith('event:')) event=line.slice(6).trim();
+    else if(line.startsWith('data:')) data.push(line.slice(5).trim());
+  }
+  if(!data.length) return null;
+  try{return {event, data:JSON.parse(data.join('\n'))};}
+  catch{return {event, data:data.join('\n')};}
+}
+
+function esc(s){
+  return String(s==null?'':s)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+</script>
+</body>
+</html>

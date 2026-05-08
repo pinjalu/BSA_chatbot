@@ -1,0 +1,439 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>BSA Chat Admin</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<style>
+:root { --primary: #b71c1c; --bg: #f5f5f7; --card: #fff; --line: #e5e5e5; --muted: #888; }
+* { box-sizing: border-box; }
+body { margin: 0; font: 14px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+       background: var(--bg); color: #222; }
+header { background: var(--primary); color: #fff; padding: 12px 20px;
+         display: flex; align-items: center; justify-content: space-between; }
+header h1 { margin: 0; font-size: 18px; font-weight: 600; }
+header button { background: rgba(255,255,255,.15); color: #fff; border: 0;
+               padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 13px; }
+.nav-btn { color: rgba(255,255,255,.75); text-decoration: none; font-size: 13px;
+           padding: 5px 12px; border-radius: 6px; transition: all .15s; }
+.nav-btn:hover { background: rgba(255,255,255,.15); color: #fff; }
+.nav-on { background: rgba(255,255,255,.2); color: #fff; font-weight: 600; }
+main { display: grid; grid-template-columns: 320px 1fr; height: calc(100vh - 50px); }
+#queue { background: var(--card); border-right: 1px solid var(--line); overflow-y: auto; }
+#queue h2 { font-size: 13px; text-transform: uppercase; color: var(--muted);
+            padding: 14px 16px 6px; margin: 0; letter-spacing: .5px; }
+.handoff { padding: 12px 16px; border-bottom: 1px solid var(--line); cursor: pointer; }
+.handoff:hover { background: #fafafa; }
+.handoff.active { background: #fff3e0; border-left: 3px solid var(--primary); }
+.handoff .name { font-weight: 600; }
+.handoff .meta { color: var(--muted); font-size: 12px; margin-top: 2px; }
+.handoff .reason { display: inline-block; padding: 2px 6px; border-radius: 4px;
+                   background: #ffe0b2; color: #e65100; font-size: 11px; margin-top: 4px; }
+.handoff .last-q { font-size: 12px; color: #444; margin: 4px 0 2px;
+                   font-style: italic; line-height: 1.4; }
+
+#chat { display: flex; flex-direction: column; overflow: hidden; }
+#chatHeader { padding: 12px 20px; background: var(--card); border-bottom: 1px solid var(--line);
+              display: flex; justify-content: space-between; align-items: center; }
+#chatHeader .id { color: var(--muted); font-size: 12px; }
+#chatHeader button { background: var(--primary); color: #fff; border: 0;
+                     padding: 6px 12px; border-radius: 6px; cursor: pointer; }
+
+#transcript { flex: 1; overflow-y: auto; padding: 20px; background: var(--bg); }
+.msg { margin-bottom: 12px; display: flex; }
+.msg .bubble { max-width: 70%; padding: 8px 12px; border-radius: 12px; white-space: pre-wrap;
+               word-wrap: break-word; }
+.msg.user { justify-content: flex-end; }
+.msg.user .bubble { background: var(--primary); color: #fff; border-bottom-right-radius: 4px; }
+.msg.assistant .bubble { background: #fff; border: 1px solid var(--line); border-bottom-left-radius: 4px; }
+.msg.admin .bubble { background: #fff8e1; border: 1px solid #f4d77b; border-bottom-left-radius: 4px; }
+.msg.system .bubble { background: transparent; color: var(--muted); font-style: italic; font-size: 12px; }
+.msg .meta { font-size: 11px; color: var(--muted); margin-top: 4px; }
+.msg .bubble p { margin: 0 0 8px; }
+.msg .bubble p:last-child { margin-bottom: 0; }
+.msg .bubble strong { font-weight: 600; color: #0c0c0d; }
+.msg .bubble em { font-style: italic; }
+.msg .bubble code {
+    background: #f0f1f4; border-radius: 4px; padding: 1px 5px;
+    font: 12.5px/1.4 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    color: #1a1a1a;
+}
+.msg .bubble ul, .msg .bubble ol {
+    margin: 4px 0 8px; padding-left: 22px;
+}
+.msg .bubble li { margin-bottom: 5px; }
+.msg .bubble li:last-child { margin-bottom: 0; }
+.msg .bubble ul li { list-style: disc; }
+.msg .bubble ol li { list-style: decimal; }
+.msg .bubble .sources-line {
+    margin-top: 10px; padding-top: 8px; border-top: 1px dashed #e0e2e6;
+    font-size: 12px; color: #6b6e73; font-style: italic;
+}
+.msg.user .bubble strong { color: #fff; }
+
+.admin-figure {
+    display: block; margin: 8px 0; border-radius: 6px; overflow: hidden;
+    background: var(--bg); border: 1px solid var(--line); line-height: 0;
+    max-width: 320px;
+}
+.admin-figure img {
+    width: 100%; height: auto; max-height: 240px; object-fit: contain;
+    display: block; background: #fff;
+}
+
+#composer { padding: 12px 20px; background: var(--card); border-top: 1px solid var(--line); }
+#composer textarea { width: 100%; min-height: 60px; resize: vertical; padding: 8px;
+                     border: 1px solid var(--line); border-radius: 6px; font: inherit; }
+#composer .row { display: flex; gap: 8px; margin-top: 8px; }
+#composer button { background: var(--primary); color: #fff; border: 0; padding: 8px 16px;
+                   border-radius: 6px; cursor: pointer; font-weight: 500; }
+#composer button.secondary { background: #757575; }
+#composer button:disabled { opacity: .5; cursor: not-allowed; }
+
+#login { max-width: 360px; margin: 80px auto; background: var(--card); padding: 28px;
+         border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,.08); }
+#login h2 { margin: 0 0 16px; }
+#login input { width: 100%; padding: 10px; border: 1px solid var(--line); border-radius: 6px;
+               margin-bottom: 12px; font: inherit; }
+#login button { width: 100%; padding: 10px; background: var(--primary); color: #fff;
+                border: 0; border-radius: 6px; cursor: pointer; font-weight: 500; }
+.err { color: #c62828; font-size: 13px; margin-bottom: 12px; }
+.placeholder { padding: 40px; text-align: center; color: var(--muted); }
+</style>
+</head>
+<body>
+
+<div id="loginScreen" style="display:none;">
+    <div id="login">
+        <h2>BSA Chat Admin</h2>
+        <div id="loginErr" class="err" style="display:none;"></div>
+        <input type="password" id="pw" placeholder="Admin password" autofocus>
+        <button onclick="login()">Sign in</button>
+    </div>
+</div>
+
+<div id="appScreen" style="display:none;">
+    <header>
+        <h1>BSA Chat — Handoff Queue</h1>
+        <div style="display:flex;align-items:center;gap:6px;">
+            <a href="/admin"          class="nav-btn nav-on">Handoffs</a>
+            <a href="/admin/analytics" class="nav-btn">Analytics</a>
+            <a href="/admin/content"   class="nav-btn">Content</a>
+            <a href="/admin/pipeline"  class="nav-btn">Pipeline</a>
+            <span id="pollStatus" style="font-size:12px;opacity:.8;margin-left:6px;"></span>
+            <button onclick="logout()" style="margin-left:8px;">Sign out</button>
+        </div>
+    </header>
+    <main>
+        <aside id="queue">
+            <h2>Open handoffs <span id="count"></span></h2>
+            <div id="queueList"></div>
+        </aside>
+        <section id="chat">
+            <div id="chatBody" class="placeholder">Select a handoff from the left.</div>
+        </section>
+    </main>
+</div>
+
+<script>
+const TOKEN_KEY = 'bsa_admin_token';
+let token = localStorage.getItem(TOKEN_KEY) || '';
+let activeSessionId = null;
+let pollTimer = null;
+
+window.addEventListener('load', () => {
+    if (token) showApp();
+    else showLogin();
+});
+
+function showLogin() {
+    document.getElementById('loginScreen').style.display = '';
+    document.getElementById('appScreen').style.display = 'none';
+}
+function showApp() {
+    document.getElementById('loginScreen').style.display = 'none';
+    document.getElementById('appScreen').style.display = '';
+    refreshQueue();
+    if (pollTimer) clearInterval(pollTimer);
+    pollTimer = setInterval(refreshQueue, 5000);
+}
+
+async function login() {
+    const pw = document.getElementById('pw').value;
+    const errEl = document.getElementById('loginErr');
+    errEl.style.display = 'none';
+    try {
+        const r = await fetch('/api/admin/login', {
+            method: 'POST',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify({ password: pw }),
+        });
+        if (!r.ok) {
+            errEl.textContent = 'Wrong password.';
+            errEl.style.display = '';
+            return;
+        }
+        const data = await r.json();
+        token = data.token;
+        localStorage.setItem(TOKEN_KEY, token);
+        showApp();
+    } catch (e) {
+        errEl.textContent = 'Server unreachable.';
+        errEl.style.display = '';
+    }
+}
+
+function logout() {
+    localStorage.removeItem(TOKEN_KEY);
+    token = '';
+    if (pollTimer) clearInterval(pollTimer);
+    showLogin();
+}
+
+async function api(path, opts = {}) {
+    opts.headers = Object.assign({}, opts.headers, {
+        authorization: `Bearer ${token}`,
+        'content-type': 'application/json',
+    });
+    const r = await fetch(path, opts);
+    if (r.status === 401) { logout(); throw new Error('unauthorized'); }
+    return r;
+}
+
+async function refreshQueue() {
+    try {
+        const r = await api('/api/admin/handoffs');
+        const data = await r.json();
+        renderQueue(data.handoffs);
+        document.getElementById('pollStatus').textContent =
+            'updated ' + new Date().toLocaleTimeString();
+        if (activeSessionId) refreshTranscript();
+    } catch (_) {}
+}
+
+function renderQueue(handoffs) {
+    const list = document.getElementById('queueList');
+    document.getElementById('count').textContent = `(${handoffs.length})`;
+    if (!handoffs.length) {
+        list.innerHTML = '<div class="placeholder" style="padding:20px;">No open handoffs.</div>';
+        return;
+    }
+    list.innerHTML = handoffs.map(h => {
+        const ts = new Date(h.created_at).toLocaleString();
+        const cls = h.session_id === activeSessionId ? 'handoff active' : 'handoff';
+        const reason = h.reason === 'low_confidence' ? 'Low confidence' : 'User asked';
+        const q = h.last_question
+            ? `<div class="last-q">"${esc(h.last_question.slice(0, 80))}${h.last_question.length > 80 ? '…' : ''}"</div>`
+            : '';
+        return `<div class="${cls}" onclick="openSession('${h.session_id}')">
+            <div class="name">${esc(h.user_name || '(no name)')}</div>
+            <div class="meta">${esc(h.user_email || '—')} · ${esc(h.dealer_id || 'no dealer')}</div>
+            ${q}
+            <div class="meta">${ts}</div>
+            <span class="reason">${reason}</span>
+        </div>`;
+    }).join('');
+}
+
+async function openSession(sessionId) {
+    activeSessionId = sessionId;
+    refreshQueue();
+    refreshTranscript();
+}
+
+async function refreshTranscript() {
+    if (!activeSessionId) return;
+    try {
+        const r = await api(`/api/admin/session/${activeSessionId}`);
+        const data = await r.json();
+        renderTranscript(data.messages);
+    } catch (_) {}
+}
+
+function renderTranscript(messages) {
+    const body = document.getElementById('chatBody');
+    body.classList.remove('placeholder');
+    body.innerHTML = `
+        <div id="chatHeader">
+            <div>
+                <div><strong>Session</strong></div>
+                <div class="id">${esc(activeSessionId)}</div>
+            </div>
+            <button onclick="resolveOnly()" class="secondary"
+                    style="background:#757575;">Resolve without reply</button>
+        </div>
+        <div id="transcript"></div>
+        <div id="composer">
+            <textarea id="reply" placeholder="Type your reply to the customer..."></textarea>
+            <div class="row">
+                <button onclick="sendReply(true)">Send & resolve</button>
+                <button onclick="sendReply(false)" class="secondary">Send (keep open)</button>
+            </div>
+        </div>
+    `;
+    const t = document.getElementById('transcript');
+    t.innerHTML = messages.map(m => {
+        const ts = new Date(m.createdAt).toLocaleTimeString();
+        let citeBlock = '';
+        if (m.citations && m.citations.length) {
+            const lines = [...new Set(m.citations.map(c =>
+                `${c.section || '—'} (${c.source_pdf}, p. ${formatPage(c.page)})`))];
+            citeBlock = `<div class="meta">Retrieved chunks: ${esc(lines.join('; '))}</div>`;
+        }
+        const score = (m.role === 'assistant' && m.topScore != null)
+            ? ` · score ${m.topScore.toFixed(2)}` : '';
+        // Render markdown for bot/admin messages so the admin sees the
+        // same formatted view the customer saw — not raw "**Step 1:**".
+        const body = (m.role === 'assistant' || m.role === 'admin')
+            ? renderMarkdown(m.content, imageMapFromCitations(m.citations))
+            : esc(m.content);
+        return `<div class="msg ${m.role}">
+            <div>
+                <div class="bubble">${body}</div>
+                <div class="meta">${m.role}${score} · ${ts}</div>
+                ${citeBlock}
+            </div>
+        </div>`;
+    }).join('');
+    t.scrollTop = t.scrollHeight;
+}
+
+// Walk citations in the same order the Python /chat endpoint did and
+// rebuild the IMG_N → URL map so [[SHOW_IMAGE: IMG_N]] tags resolve.
+function imageMapFromCitations(citations) {
+    const map = {};
+    if (!Array.isArray(citations)) return map;
+    let n = 0;
+    for (const c of citations) {
+        const paths = (c && c.image_paths) || [];
+        for (const p of paths) {
+            n += 1;
+            if (typeof p === 'string' && p) {
+                map['IMG_' + n] = '/api/images/'
+                    + p.split(/[\\/]/).map(encodeURIComponent).join('/');
+            }
+        }
+    }
+    return map;
+}
+
+function formatPage(p) {
+    if (p == null) return '?';
+    const n = Number(p);
+    return Number.isFinite(n) ? Math.trunc(n) : p;
+}
+
+// Same lightweight markdown renderer used by widget.js — kept as a
+// copy here so admin.html stays a single self-contained file.
+function renderMarkdown(raw, imageMap) {
+    if (!raw) return '';
+    const imgs = imageMap || {};
+    const placeholders = [];
+    const withPlaceholders = String(raw).replace(
+        /\[\[SHOW_IMAGE:\s*([A-Za-z0-9_-]+)\s*\]\]/g,
+        (_m, id) => {
+            const url = imgs[id];
+            if (!url) return '';
+            const idx = placeholders.length;
+            placeholders.push(url);
+            return ' IMG' + idx + ' ';
+        },
+    );
+
+    let s = esc(withPlaceholders);
+    s = s.replace(/`([^`\n]+)`/g, '<code>$1</code>');
+    s = s.replace(/\*\*([^*\n][^*]*?)\*\*/g, '<strong>$1</strong>');
+    s = s.replace(/(^|[^\*])\*([^*\n]+?)\*(?!\*)/g, '$1<em>$2</em>');
+
+    const lines = s.split(/\r?\n/);
+    const out = [];
+    let listType = null, para = [];
+    const flushPara = () => { if (para.length) { out.push('<p>' + para.join('<br>') + '</p>'); para = []; } };
+    const closeList = () => { if (listType) { out.push('</' + listType + '>'); listType = null; } };
+    for (const line of lines) {
+        const trimmed = line.trim();
+        if (!trimmed) { flushPara(); closeList(); continue; }
+        const ul = /^[-*•]\s+(.*)$/.exec(trimmed);
+        const ol = /^(\d+)[.)]\s+(.*)$/.exec(trimmed);
+        if (ul) {
+            flushPara();
+            if (listType !== 'ul') { closeList(); out.push('<ul>'); listType = 'ul'; }
+            out.push('<li>' + ul[1] + '</li>');
+        } else if (ol) {
+            flushPara();
+            if (listType !== 'ol') { closeList(); out.push('<ol>'); listType = 'ol'; }
+            out.push('<li>' + ol[2] + '</li>');
+        } else {
+            closeList();
+            para.push(trimmed);
+        }
+    }
+    flushPara(); closeList();
+
+    let html = out.join('').replace(
+        /<p>(Sources:[^<]*)<\/p>/i,
+        '<p class="sources-line">$1</p>',
+    );
+    html = html.replace(/<p>\s*IMG(\d+)\s*<\/p>/g, (_m, n) => figureBlock(placeholders[Number(n)]));
+    html = html.replace(/\s?IMG(\d+)\s?/g, (_m, n) => figureBlock(placeholders[Number(n)]));
+    return html;
+}
+
+function figureBlock(url) {
+    if (!url) return '';
+    const safe = String(url).replace(/"/g, '&quot;');
+    return '<a class="admin-figure" href="' + safe + '" target="_blank" '
+        + 'rel="noopener" title="Open full size">'
+        + '<img src="' + safe + '" alt="figure" loading="lazy">'
+        + '</a>';
+}
+
+async function sendReply(resolve) {
+    const ta = document.getElementById('reply');
+    const text = ta.value.trim();
+    if (!text) return;
+    try {
+        const r = await api('/api/admin/reply', {
+            method: 'POST',
+            body: JSON.stringify({ sessionId: activeSessionId, message: text, resolve }),
+        });
+        if (!r.ok) throw new Error('failed');
+        ta.value = '';
+        if (resolve) {
+            activeSessionId = null;
+            document.getElementById('chatBody').className = 'placeholder';
+            document.getElementById('chatBody').textContent = 'Resolved.';
+        }
+        refreshQueue();
+    } catch (e) {
+        alert('Send failed: ' + e.message);
+    }
+}
+
+async function resolveOnly() {
+    if (!confirm('Resolve without sending a reply?')) return;
+    try {
+        await api('/api/admin/resolve', {
+            method: 'POST',
+            body: JSON.stringify({ sessionId: activeSessionId }),
+        });
+        activeSessionId = null;
+        document.getElementById('chatBody').className = 'placeholder';
+        document.getElementById('chatBody').textContent = 'Resolved.';
+        refreshQueue();
+    } catch (_) {}
+}
+
+function esc(s) {
+    return String(s == null ? '' : s).replace(/[&<>"']/g, c => (
+        { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]
+    ));
+}
+
+document.addEventListener('keydown', e => {
+    if (e.target.id === 'pw' && e.key === 'Enter') login();
+});
+</script>
+
+</body>
+</html>

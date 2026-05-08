@@ -1,0 +1,36 @@
+# Python
+venv/
+__pycache__/
+*.pyc
+*.pyo
+.Python
+*.egg-info/
+
+# Environment variables (secrets)
+.env
+server/.env
+production/.env
+
+# Data & uploads (too large for git)
+Data/
+Docs/
+production/Data/
+
+# Logs
+debug_logs/
+chat_logs/
+*.log
+
+# Pipeline state
+production/pipeline_jobs.json
+
+# Node
+server/node_modules/
+server/admin-react/node_modules/
+
+# React build output (generated from source)
+server/public/app/
+
+# OS
+.DS_Store
+Thumbs.db

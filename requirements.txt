@@ -1,0 +1,37 @@
+# Core PDF + image stack (used by only_Image.py and the text extractor)
+PyMuPDF>=1.23
+pdfplumber>=0.10
+opencv-python>=4.8
+numpy>=1.26
+pandas>=2.0
+Pillow>=10.0
+pytesseract>=0.3.10
+camelot-py[cv]>=0.11
+
+# OCR (optional but recommended). PaddleOCR is heavy — skip for OCR-free runs.
+paddleocr>=2.7
+paddlepaddle>=2.6
+
+# Streamlit UI
+streamlit>=1.32
+
+# .env autoload so credentials / folder ID can be set without env-var setup
+python-dotenv>=1.0
+
+# Google Drive upload (only needed if you tick the Drive box)
+google-api-python-client>=2.110
+google-auth>=2.27
+google-auth-httplib2>=0.2
+
+# Optional: Gemini merge step
+google-genai>=0.3
+
+# Chat / RAG runtime
+openai>=1.40
+pinecone>=5.0
+
+# FastAPI streaming layer (api.py) consumed by the Node.js front layer
+fastapi>=0.110
+uvicorn[standard]>=0.27
+pydantic>=2.5
+python-multipart>=0.0.9   # required by FastAPI's multipart upload (pipeline_api.py)

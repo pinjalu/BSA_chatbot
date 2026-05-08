@@ -1,0 +1,638 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>BSA Knowledge-Base Pipeline</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<style>
+:root {
+    --primary: #b71c1c; --primary-dark: #7f1313;
+    --bg: #f5f5f7; --card: #fff; --line: #e5e5e5; --muted: #888;
+    --ok: #2e7d32; --pending: #b0b3b8; --running: #f57c00;
+    --failed: #c62828;
+}
+* { box-sizing: border-box; }
+body { margin: 0; font: 14px/1.5 -apple-system, BlinkMacSystemFont,
+    "Segoe UI", Roboto, sans-serif; background: var(--bg); color: #222; }
+header { background: var(--primary); color: #fff; padding: 12px 20px;
+    display: flex; align-items: center; justify-content: space-between; }
+header h1 { margin: 0; font-size: 18px; font-weight: 600; }
+header nav a { color: #fff; opacity: .85; margin-right: 16px;
+    text-decoration: none; font-size: 13px; }
+header nav a:hover { opacity: 1; }
+.nav-btn { color: rgba(255,255,255,.75); text-decoration: none; font-size: 13px;
+           padding: 5px 12px; border-radius: 6px; transition: all .15s; opacity: 1; margin: 0; }
+.nav-btn:hover { background: rgba(255,255,255,.15); color: #fff; }
+.nav-on { background: rgba(255,255,255,.2); color: #fff; font-weight: 600; }
+header button { background: rgba(255,255,255,.15); color: #fff; border: 0;
+    padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 13px; }
+
+main { max-width: 1100px; margin: 24px auto; padding: 0 20px;
+    display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+@media (max-width: 900px) { main { grid-template-columns: 1fr; } }
+
+.card { background: var(--card); border-radius: 10px;
+    box-shadow: 0 1px 3px rgba(0,0,0,.06); padding: 20px; }
+.card h2 { margin: 0 0 14px; font-size: 15px; font-weight: 600; }
+
+#dropzone {
+    border: 2px dashed #cfd2d8; border-radius: 10px; padding: 40px 20px;
+    text-align: center; color: #666; cursor: pointer;
+    transition: border-color .15s, background .15s;
+}
+#dropzone.drag {
+    border-color: var(--primary); background: #fff8f8;
+}
+#dropzone .big { font-size: 28px; margin-bottom: 8px; opacity: .7; }
+#dropzone strong { color: var(--primary); cursor: pointer; }
+#dropzone input[type=file] { display: none; }
+
+#queue { font-size: 13px; }
+.stage-row {
+    display: grid; grid-template-columns: 22px 1fr auto; gap: 8px;
+    align-items: center; padding: 8px 0; border-bottom: 1px dashed #eef0f3;
+}
+.stage-row:last-child { border-bottom: 0; }
+.stage-status { width: 16px; height: 16px; border-radius: 50%;
+    display: inline-block; }
+.stage-status.pending  { background: var(--pending); }
+.stage-status.running  { background: var(--running); animation: pulse 1.2s ease-in-out infinite; }
+.stage-status.done     { background: var(--ok); }
+.stage-status.failed   { background: var(--failed); }
+.stage-status.skipped  { background: #cfd2d8; opacity: .5; }
+@keyframes pulse {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(245,124,0,.6); }
+    50%      { box-shadow: 0 0 0 6px rgba(245,124,0,0); }
+}
+.stage-name { font-weight: 500; }
+.stage-time { color: var(--muted); font-size: 11px; font-variant-numeric: tabular-nums; }
+
+.progress-summary {
+    display: flex; align-items: center; gap: 10px; margin-top: 8px;
+    padding: 10px 14px; background: var(--bg); border-radius: 8px; font-size: 13px;
+}
+.progress-bar { flex: 1; height: 8px; background: #e5e5e5; border-radius: 4px;
+    overflow: hidden; }
+.progress-bar > div { height: 100%; background: var(--primary);
+    transition: width .25s ease; }
+.progress-text { color: var(--muted); font-variant-numeric: tabular-nums; }
+
+#log {
+    margin-top: 14px; background: #1c1c1e; color: #d8d8de;
+    border-radius: 8px; padding: 14px; font: 12px/1.55 ui-monospace,
+    SFMono-Regular, Menlo, Consolas, monospace; height: 360px;
+    overflow-y: auto; white-space: pre-wrap; word-break: break-word;
+    border: 1px solid #2a2a2c;
+}
+#log .marker { color: #ffb74d; font-weight: 600; }
+#log .err    { color: #ff8a80; }
+#log .ok     { color: #81c784; }
+
+#jobs { font-size: 13px; }
+#jobs table { width: 100%; border-collapse: collapse; }
+#jobs th, #jobs td { padding: 8px 10px; border-bottom: 1px solid #f0f1f4;
+    text-align: left; font-size: 12px; }
+#jobs th { color: var(--muted); font-weight: 500; text-transform: uppercase;
+    letter-spacing: .3px; font-size: 11px; }
+#jobs td { font-variant-numeric: tabular-nums; }
+#jobs tr.active td { background: #fff8f8; }
+#jobs tr { cursor: pointer; }
+#jobs tr:hover td { background: #fafafa; }
+.pill { display: inline-block; padding: 2px 8px; border-radius: 10px;
+    font-size: 10px; font-weight: 600; text-transform: uppercase;
+    letter-spacing: .3px; }
+.pill.queued   { background: #e0e0e0; color: #5a5a5a; }
+.pill.running  { background: #fff3d6; color: #c46300; }
+.pill.done     { background: #e3f5e8; color: #2e7d32; }
+.pill.failed   { background: #ffebee; color: #c62828; }
+.pill.cancelled { background: #f0f0f0; color: #5a5a5a; }
+
+.empty { color: var(--muted); text-align: center; padding: 30px 0; }
+
+#login { max-width: 360px; margin: 80px auto; background: var(--card);
+    padding: 28px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,.08); }
+#login h2 { margin: 0 0 16px; }
+#login input { width: 100%; padding: 10px; border: 1px solid var(--line);
+    border-radius: 6px; margin-bottom: 12px; font: inherit; }
+#login button { width: 100%; padding: 10px; background: var(--primary);
+    color: #fff; border: 0; border-radius: 6px; cursor: pointer; font-weight: 500; }
+.err { color: #c62828; font-size: 13px; margin-bottom: 12px; }
+
+button.ghost { background: transparent; border: 1px solid var(--line);
+    color: #444; border-radius: 6px; padding: 6px 12px; cursor: pointer;
+    font-size: 12px; }
+button.ghost:hover { background: var(--bg); }
+button.danger { background: var(--failed); color: #fff; border: 0;
+    border-radius: 6px; padding: 6px 12px; cursor: pointer; font-size: 12px; }
+</style>
+</head>
+<body>
+
+<div id="loginScreen" style="display:none;">
+    <div id="login">
+        <h2>Pipeline Admin</h2>
+        <div id="loginErr" class="err" style="display:none;"></div>
+        <input type="password" id="pw" placeholder="Admin password" autofocus>
+        <button onclick="login()">Sign in</button>
+    </div>
+</div>
+
+<div id="appScreen" style="display:none;">
+    <header>
+        <h1>BSA Chat — Pipeline</h1>
+        <nav style="display:flex;gap:6px;align-items:center;">
+            <a href="/admin"           class="nav-btn">Handoffs</a>
+            <a href="/admin/analytics" class="nav-btn">Analytics</a>
+            <a href="/admin/content"   class="nav-btn">Content</a>
+            <a href="/admin/pipeline"  class="nav-btn nav-on">Pipeline</a>
+            <span id="pollStatus" style="font-size:12px;opacity:.85;margin-left:6px;"></span>
+        </nav>
+        <button onclick="logout()">Sign out</button>
+    </header>
+
+    <main>
+        <section class="card">
+            <h2>Add a new PDF</h2>
+            <label id="dropzone" for="fileInput">
+                <div class="big">📄</div>
+                <div>Drop a PDF here, or <strong>click to choose</strong></div>
+                <div style="margin-top:6px;font-size:12px;color:var(--muted);">
+                    text → images → clean → prepare → embed → live in Pinecone
+                </div>
+                <input type="file" id="fileInput" accept="application/pdf,.pdf">
+            </label>
+
+            <!-- Confirm panel — shown after file selected -->
+            <div id="confirm-panel" style="display:none;margin-top:16px;
+                background:#f9f9f9;border:1px solid #e0e0e0;border-radius:10px;padding:16px 18px;">
+                <div style="font-size:13px;font-weight:600;margin-bottom:12px;color:#333;">
+                    Ready to process
+                </div>
+                <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;
+                    background:#fff;border:1px solid #e0e0e0;border-radius:8px;padding:10px 14px;">
+                    <span style="font-size:22px;">📄</span>
+                    <div>
+                        <div style="font-size:13px;font-weight:600;" id="confirm-name"></div>
+                        <div style="font-size:11px;color:#888;" id="confirm-size"></div>
+                    </div>
+                </div>
+                <div style="margin-bottom:14px;">
+                    <label style="display:block;font-size:11px;font-weight:600;color:#888;
+                        text-transform:uppercase;letter-spacing:.4px;margin-bottom:6px;">
+                        Document Category
+                    </label>
+                    <select id="doc-category" style="width:100%;padding:9px 11px;
+                        border:1px solid #e0e0e0;border-radius:7px;font:inherit;
+                        font-size:13px;background:#fff;cursor:pointer;">
+                        <option value="">— Select category —</option>
+                        <option value="workshop_manual">Workshop Manual</option>
+                        <option value="owners_manual">Owner's Manual</option>
+                        <option value="parts_catalogue">Parts Catalogue</option>
+                        <option value="accessories_catalog">Accessories Catalog</option>
+                        <option value="spec_sheet">Spec Sheet / Catalogue</option>
+                        <option value="wiring_diagram">Wiring Diagram</option>
+                        <option value="sop">SOP / Field Guide</option>
+                    </select>
+                </div>
+<div style="display:flex;gap:8px;">
+                    <button id="confirm-btn" onclick="confirmUpload()"
+                        style="flex:1;padding:10px;background:#b71c1c;color:#fff;
+                        border:0;border-radius:7px;cursor:pointer;font-weight:600;font-size:13px;">
+                        🚀 Start Pipeline
+                    </button>
+                    <button onclick="cancelConfirm()"
+                        style="padding:10px 16px;background:#e0e0e0;color:#333;
+                        border:0;border-radius:7px;cursor:pointer;font-size:13px;">
+                        Cancel
+                    </button>
+                </div>
+            </div>
+
+            <h2 style="margin-top:20px;">Recent jobs</h2>
+            <div id="jobs">
+                <div class="empty">No jobs yet.</div>
+            </div>
+        </section>
+
+        <section class="card">
+            <div style="display:flex;justify-content:space-between;align-items:center;">
+                <h2 id="activeTitle" style="margin:0;">Pipeline progress</h2>
+                <button id="cancelBtn" class="danger" style="display:none;"
+                        onclick="cancelActive()">Cancel</button>
+            </div>
+            <div id="queue">
+                <div class="empty">Pick or upload a job to see its progress.</div>
+            </div>
+            <div id="progressSummary" style="display:none;" class="progress-summary">
+                <div class="progress-bar"><div id="progressBarFill" style="width:0%;"></div></div>
+                <span class="progress-text" id="progressText">0 / 0</span>
+            </div>
+            <div id="log" style="display:none;"></div>
+        </section>
+    </main>
+</div>
+
+<script>
+const TOKEN_KEY = 'bsa_admin_token';
+let token = localStorage.getItem(TOKEN_KEY) || '';
+let activeJobId = null;
+let activeStream = null;
+let queueRefreshTimer = null;
+
+window.addEventListener('load', () => {
+    if (token) showApp(); else showLogin();
+});
+
+function showLogin() {
+    document.getElementById('loginScreen').style.display = '';
+    document.getElementById('appScreen').style.display = 'none';
+}
+function showApp() {
+    document.getElementById('loginScreen').style.display = 'none';
+    document.getElementById('appScreen').style.display = '';
+    refreshJobs();
+    if (queueRefreshTimer) clearInterval(queueRefreshTimer);
+    queueRefreshTimer = setInterval(refreshJobs, 4000);
+    setupDropzone();
+}
+
+async function login() {
+    const pw = document.getElementById('pw').value;
+    const errEl = document.getElementById('loginErr');
+    errEl.style.display = 'none';
+    try {
+        const r = await fetch('/api/admin/login', {
+            method: 'POST',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify({ password: pw }),
+        });
+        if (!r.ok) {
+            errEl.textContent = 'Wrong password.';
+            errEl.style.display = '';
+            return;
+        }
+        const data = await r.json();
+        token = data.token;
+        localStorage.setItem(TOKEN_KEY, token);
+        showApp();
+    } catch (_) {
+        errEl.textContent = 'Server unreachable.';
+        errEl.style.display = '';
+    }
+}
+function logout() {
+    localStorage.removeItem(TOKEN_KEY);
+    token = '';
+    if (queueRefreshTimer) clearInterval(queueRefreshTimer);
+    if (activeStream) activeStream.close();
+    showLogin();
+}
+
+async function api(path, opts = {}) {
+    opts.headers = Object.assign({}, opts.headers, {
+        authorization: `Bearer ${token}`,
+    });
+    const r = await fetch(path, opts);
+    if (r.status === 401) { logout(); throw new Error('unauthorized'); }
+    return r;
+}
+
+// ─────────────────────── upload ───────────────────────
+let pendingFile = null;
+
+function setupDropzone() {
+    const dz = document.getElementById('dropzone');
+    const fi = document.getElementById('fileInput');
+    fi.addEventListener('change', () => {
+        if (fi.files && fi.files[0]) showConfirm(fi.files[0]);
+        fi.value = '';
+    });
+    ['dragenter', 'dragover'].forEach(ev => dz.addEventListener(ev, e => {
+        e.preventDefault(); e.stopPropagation();
+        dz.classList.add('drag');
+    }));
+    ['dragleave', 'drop'].forEach(ev => dz.addEventListener(ev, e => {
+        e.preventDefault(); e.stopPropagation();
+        dz.classList.remove('drag');
+    }));
+    dz.addEventListener('drop', e => {
+        const f = e.dataTransfer.files && e.dataTransfer.files[0];
+        if (f) showConfirm(f);
+    });
+}
+
+function showConfirm(file) {
+    if (!file.name.toLowerCase().endsWith('.pdf')) {
+        alert('Please select a PDF file.');
+        return;
+    }
+    pendingFile = file;
+    const size = file.size > 1024*1024
+        ? (file.size/1024/1024).toFixed(1)+' MB'
+        : (file.size/1024).toFixed(0)+' KB';
+    document.getElementById('confirm-name').textContent = file.name;
+    document.getElementById('confirm-size').textContent = size;
+    document.getElementById('doc-category').value = autoCategory(file.name);
+    document.getElementById('confirm-panel').style.display = '';
+    document.getElementById('dropzone').style.display = 'none';
+}
+
+function autoCategory(name) {
+    const n = name.toLowerCase();
+    if (n.includes('workshop')) return 'workshop_manual';
+    if (n.includes('owner') || n.includes('manual')) return 'owners_manual';
+    if (n.includes('parts') || n.includes('catalogue') || n.includes('catalog')) return 'parts_catalogue';
+    if (n.includes('accessor')) return 'accessories_catalog';
+    if (n.includes('wiring')) return 'wiring_diagram';
+    if (n.includes('sop') || n.includes('field')) return 'sop';
+    if (n.includes('spec') || n.includes('bsa catalogue')) return 'spec_sheet';
+    return '';
+}
+
+function cancelConfirm() {
+    pendingFile = null;
+    document.getElementById('confirm-panel').style.display = 'none';
+    document.getElementById('dropzone').style.display = '';
+}
+
+async function confirmUpload() {
+    if (!pendingFile) return;
+    const category = document.getElementById('doc-category').value;
+    if (!category) {
+        alert('Please select a document category.');
+        return;
+    }
+    document.getElementById('confirm-panel').style.display = 'none';
+    document.getElementById('dropzone').style.display = '';
+    uploadFile(pendingFile, category);
+    pendingFile = null;
+}
+
+async function uploadFile(file, category, skipSteps) {
+    const fd = new FormData();
+    fd.append('file', file);
+    if (category)   fd.append('category', category);
+    if (skipSteps)  fd.append('skip', skipSteps);
+
+    const dz = document.getElementById('dropzone');
+    const original = dz.innerHTML;
+    dz.innerHTML = `<div class="big">⏳</div><div>Uploading
+        <strong>${esc(file.name)}</strong> …</div>`;
+
+    try {
+        const r = await api('/api/admin/pipeline/upload', {
+            method: 'POST', body: fd,
+        });
+        if (!r.ok) {
+            const t = await r.text();
+            alert('Upload failed: ' + t);
+        } else {
+            const data = await r.json();
+            attachToJob(data.job_id);
+            refreshJobs();
+        }
+    } catch (e) {
+        alert('Upload error: ' + e.message);
+    } finally {
+        dz.innerHTML = original;
+    }
+}
+
+// ─────────────────────── jobs list ───────────────────────
+async function refreshJobs() {
+    try {
+        const r = await api('/api/admin/pipeline/jobs');
+        const data = await r.json();
+        // pipeline API returns a plain array
+        const jobs = Array.isArray(data) ? data : (data.jobs || []);
+        renderJobs(jobs);
+        document.getElementById('pollStatus').textContent =
+            'updated ' + new Date().toLocaleTimeString();
+    } catch (_) {}
+}
+
+function renderJobs(jobs) {
+    const root = document.getElementById('jobs');
+    if (!jobs.length) {
+        root.innerHTML = '<div class="empty">No jobs yet.</div>';
+        return;
+    }
+    root.innerHTML = `<table>
+        <thead><tr>
+            <th>PDF</th><th>Status</th><th>Stages</th>
+            <th>Started</th><th>Duration</th><th></th>
+        </tr></thead>
+        <tbody>${jobs.map(j => {
+            const id = j.job_id || j.id;
+            let dur = '—';
+            if (j.started_at && j.finished_at) {
+                const ms = new Date(j.finished_at) - new Date(j.started_at);
+                dur = formatDuration(ms);
+            } else if (j.status === 'running') {
+                dur = 'running…';
+            }
+            const stageVals = j.stages ? Object.values(j.stages) : [];
+            const doneCount = stageVals.filter(s => s.status === 'done').length;
+            const stage = stageVals.length ? `${doneCount}/${stageVals.length}` : '—';
+            const started = j.started_at
+                ? new Date(j.started_at).toLocaleTimeString() : '—';
+            const cls = id === activeJobId ? 'active' : '';
+            const canDelete = j.status !== 'running' && j.status !== 'queued';
+            return `<tr class="${cls}" onclick="attachToJob('${esc(id)}')">
+                <td>${esc(j.pdf_name)}</td>
+                <td><span class="pill ${j.status}">${esc(j.status)}</span></td>
+                <td>${stage}</td>
+                <td>${started}</td>
+                <td>${dur}</td>
+                <td onclick="event.stopPropagation()">
+                    ${canDelete ? `<button onclick="deleteJob('${esc(id)}','${esc(j.pdf_name)}')"
+                        style="background:#fce4e4;color:#c62828;border:0;padding:3px 8px;
+                        border-radius:5px;cursor:pointer;font-size:11px;font-weight:600;">
+                        Delete
+                    </button>` : ''}
+                </td>
+            </tr>`;
+        }).join('')}
+        </tbody></table>`;
+}
+
+// ─────────────────────── active job + SSE ───────────────────────
+async function attachToJob(jobId) {
+    if (activeStream) { activeStream.close(); activeStream = null; }
+    activeJobId = jobId;
+    refreshJobs();
+
+    document.getElementById('queue').innerHTML = '<div class="empty">Loading…</div>';
+    document.getElementById('log').style.display = '';
+    document.getElementById('log').innerHTML = '';
+    document.getElementById('progressSummary').style.display = 'flex';
+
+    // First load current job state via REST
+    try {
+        const r = await api(`/api/admin/pipeline/jobs/${encodeURIComponent(jobId)}`);
+        const job = await r.json();
+        renderState(job);
+        // Show stored log events
+        for (const evt of (job.events || [])) {
+            if (evt.message) appendLog(evt.message);
+        }
+    } catch (_) {}
+
+    // Then connect SSE for live updates (running jobs)
+    const url = `/api/admin/pipeline/jobs/${encodeURIComponent(jobId)}/stream`
+        + `?token=${encodeURIComponent(token)}`;
+    activeStream = new EventSource(url);
+
+    activeStream.addEventListener('message', ev => {
+        try {
+            const evt = JSON.parse(ev.data);
+            if (evt.type === 'stream_end' || evt.type === 'stream_timeout') {
+                activeStream.close(); activeStream = null;
+                refreshJobs();
+                return;
+            }
+            if (evt.message) appendLog(evt.message);
+            // Refresh job state on stage changes
+            if (['start','done','error','skipped','job_done','job_error'].includes(evt.type)) {
+                api(`/api/admin/pipeline/jobs/${encodeURIComponent(jobId)}`)
+                    .then(r => r.json()).then(job => renderState(job)).catch(() => {});
+            }
+        } catch (_) {}
+    });
+}
+
+function renderState(state) {
+    document.getElementById('activeTitle').textContent =
+        `Pipeline · ${state.pdf_name || state.pdf_path?.split(/[\\/]/).pop() || ''}`;
+    // stages is a dict from the API — convert to sorted array
+    const stagesObj = state.stages || {};
+    const STAGE_ORDER = ['extract_text','extract_images','clean_text','clean_images',
+        'merge_chunks','prepare_pinecone','embed_upsert','upload_s3'];
+    const stages = STAGE_ORDER
+        .filter(k => stagesObj[k])
+        .map(k => stagesObj[k]);
+    // also include any stages not in our expected order
+    Object.keys(stagesObj).forEach(k => {
+        if (!STAGE_ORDER.includes(k)) stages.push(stagesObj[k]);
+    });
+    const total = stages.length;
+    const done = stages.filter(s => s.status === 'done'
+        || s.status === 'skipped').length;
+
+    const fillPct = total ? Math.round((done / total) * 100) : 0;
+    document.getElementById('progressBarFill').style.width = fillPct + '%';
+    document.getElementById('progressText').textContent =
+        `${done} / ${total} stages · ${state.status}`;
+
+    const cancelBtn = document.getElementById('cancelBtn');
+    cancelBtn.style.display = state.status === 'running' ? '' : 'none';
+
+    // Show retry button for error jobs
+    let retryBtn = document.getElementById('retryBtn');
+    if (state.status === 'error') {
+        if (!retryBtn) {
+            retryBtn = document.createElement('button');
+            retryBtn.id = 'retryBtn';
+            retryBtn.style.cssText = 'background:#e65100;color:#fff;border:0;padding:6px 14px;border-radius:6px;cursor:pointer;font-size:13px;font-weight:600;margin-left:8px;';
+            cancelBtn.parentNode.appendChild(retryBtn);
+        }
+        // Find first failed/unskipped stage
+        const failedIdx = stages.findIndex(s => s.status === 'error');
+        const skipTo = stages.slice(0, failedIdx).map(s => s.name).join(',');
+        retryBtn.textContent = `↩ Retry from Stage ${failedIdx + 1}`;
+        retryBtn.onclick = () => retryJob(activeJobId, skipTo);
+    } else if (retryBtn) {
+        retryBtn.remove();
+    }
+
+    const queue = document.getElementById('queue');
+    queue.innerHTML = stages.map((s, i) => {
+        const elapsed = s.elapsed ? formatDuration(s.elapsed * 1000)
+            : s.duration_ms ? formatDuration(s.duration_ms) : '';
+        const isRunning = s.status === 'running';
+        const label = s.error
+            ? `<span style="color:#ef5350;font-size:12px;"> — ${esc(s.error.slice(0,80))}</span>`
+            : '';
+        return `<div class="stage-row">
+            <span class="stage-status ${s.status}" title="${esc(s.status)}"></span>
+            <span class="stage-name${isRunning ? ' active' : ''}">${i + 1}. ${esc(s.label || s.name)}${label}</span>
+            <span class="stage-time">${elapsed}</span>
+        </div>`;
+    }).join('') || '<div class="empty">No stages yet.</div>';
+}
+
+function appendLog(line) {
+    const el = document.getElementById('log');
+    const span = document.createElement('div');
+    if (line.startsWith('━')) span.className = 'marker';
+    else if (/^\[error\]/i.test(line)) span.className = 'err';
+    else if (/^\[ok\]/i.test(line)) span.className = 'ok';
+    span.textContent = line;
+    el.appendChild(span);
+    // Auto-scroll only if user is near the bottom.
+    const nearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 60;
+    if (nearBottom) el.scrollTop = el.scrollHeight;
+}
+
+async function deleteJob(jobId, name) {
+    if (!confirm(`Delete job for "${name}"?\nThis only removes it from history — processed files are kept.`)) return;
+    try {
+        const r = await api(`/api/admin/pipeline/jobs/${encodeURIComponent(jobId)}`, { method: 'DELETE' });
+        if (!r.ok) throw new Error('Failed');
+        if (activeJobId === jobId) {
+            activeJobId = null;
+            document.getElementById('activeTitle').textContent = 'Pipeline progress';
+            document.getElementById('queue').innerHTML = '<div class="empty">Pick or upload a job to see its progress.</div>';
+            document.getElementById('log').innerHTML = '';
+            document.getElementById('progressSummary').style.display = 'none';
+        }
+        refreshJobs();
+    } catch (e) { alert('Delete failed: ' + e.message); }
+}
+
+async function retryJob(jobId, skipSteps) {
+    try {
+        const r = await api(`/api/admin/pipeline/jobs/${encodeURIComponent(jobId)}/retry`, {
+            method: 'POST',
+            headers: { 'content-type': 'application/x-www-form-urlencoded' },
+            body: skipSteps ? `skip=${encodeURIComponent(skipSteps)}` : '',
+        });
+        if (!r.ok) throw new Error('Failed');
+        const data = await r.json();
+        attachToJob(data.job_id);
+        refreshJobs();
+    } catch (e) {
+        alert('Retry failed: ' + e.message);
+    }
+}
+
+async function cancelActive() {
+    if (!activeJobId) return;
+    if (!confirm('Cancel this pipeline run?')) return;
+    try {
+        await api(`/api/admin/pipeline/jobs/${activeJobId}/cancel`,
+            { method: 'POST' });
+    } catch (e) { alert('Cancel failed: ' + e.message); }
+}
+
+// ─────────────────────── helpers ───────────────────────
+function formatDuration(ms) {
+    if (ms < 1000) return ms + ' ms';
+    const s = ms / 1000;
+    if (s < 60) return s.toFixed(1) + ' s';
+    const m = Math.floor(s / 60);
+    const r = Math.round(s - m * 60);
+    return `${m}m ${r}s`;
+}
+function esc(s) {
+    return String(s == null ? '' : s).replace(/[&<>"']/g, c => (
+        { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]
+    ));
+}
+document.addEventListener('keydown', e => {
+    if (e.target.id === 'pw' && e.key === 'Enter') login();
+});
+</script>
+
+</body>
+</html>
