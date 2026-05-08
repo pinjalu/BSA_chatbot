@@ -18,10 +18,10 @@ AI-powered customer support chatbot for BSA motorcycle dealers.
 Browser / Dealer site
         │
         ▼
-Port 3000  →  Front layer  (server/main.py)   — sessions, auth, SSE relay
+Port 3000  →  Front layer  (admin-panel/main.py)   — sessions, auth, SSE relay
         │                  └── PostgreSQL      — sessions, messages, handoffs
         ├──▶  Port 8000  →  RAG API  (api.py)           — chat answers
-        └──▶  Port 8001  →  Pipeline (production/pipeline_api.py) — PDF ingest
+        └──▶  Port 8001  →  Pipeline (pipeline-engine/pipeline_api.py) — PDF ingest
 ```
 
 ## Setup
@@ -34,7 +34,7 @@ venv\Scripts\activate        # Windows
 # source venv/bin/activate   # macOS / Linux
 
 pip install -r requirements.txt
-pip install -r server/requirements.txt
+pip install -r admin-panel/requirements.txt
 ```
 
 ### 2. Environment variables
@@ -44,8 +44,8 @@ pip install -r server/requirements.txt
 copy .env.example .env
 # Fill in: OPENAI_API_KEY, PINECONE_API_KEY, AWS_* etc.
 
-# Server .env — front layer (server/main.py)
-copy server\.env.example server\.env
+# Admin-panel .env — front layer (admin-panel/main.py)
+copy admin-panel\.env.example admin-panel\.env
 # Fill in: DATABASE_URL, ADMIN_PASSWORD etc.
 ```
 
@@ -60,12 +60,12 @@ CREATE DATABASE bsa_chat;
 ### 4. React admin build
 
 ```bash
-cd server\admin-react
+cd admin-panel\admin-react
 npm install
 npm run build
 ```
 
-The build outputs to `server/public/app/` which is served by the front layer.
+The build outputs to `admin-panel/public/app/` which is served by the front layer.
 
 ## Running
 
@@ -78,13 +78,13 @@ uvicorn api:app --host 127.0.0.1 --port 8000
 
 **Terminal 2 — Pipeline API (port 8001)**
 ```bash
-cd production
+cd pipeline-engine
 uvicorn pipeline_api:app --host 127.0.0.1 --port 8001
 ```
 
 **Terminal 3 — Front layer (port 3000)**
 ```bash
-cd server
+cd admin-panel
 uvicorn main:app --host 127.0.0.1 --port 3000
 ```
 
@@ -124,7 +124,7 @@ Add this script tag to any dealer website:
 | `AWS_REGION` | AWS region (default: ap-southeast-2) |
 | `CONFIDENCE_THRESHOLD` | Below this score → suggest handoff (default: 0.45) |
 
-### `deploy/server/.env`
+### `deploy/admin-panel/.env`
 
 | Variable | Description |
 |----------|-------------|

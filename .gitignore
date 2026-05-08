@@ -8,13 +8,13 @@ __pycache__/
 
 # Environment variables (secrets)
 .env
-server/.env
-production/.env
+admin-panel/.env
+pipeline-engine/.env
 
 # Data & uploads (too large for git)
 Data/
 Docs/
-production/Data/
+pipeline-engine/Data/
 
 # Logs
 debug_logs/
@@ -22,14 +22,14 @@ chat_logs/
 *.log
 
 # Pipeline state
-production/pipeline_jobs.json
+pipeline-engine/pipeline_jobs.json
 
 # Node
-server/node_modules/
-server/admin-react/node_modules/
+admin-panel/node_modules/
+admin-panel/admin-react/node_modules/
 
 # React build output (generated from source)
-server/public/app/
+admin-panel/public/app/
 
 # OS
 .DS_Store
